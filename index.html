@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sonic Studio — AI Music Maker</title>
+<meta name="description" content="Create songs, lyrics, covers, stems and videos with the Suno API. Bring your own key.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%237c5cff'/%3E%3Cpath d='M22 44V22l24-6v22' fill='none' stroke='white' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='17' cy='44' r='6' fill='white'/%3E%3Ccircle cx='41' cy='38' r='6' fill='white'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f6f5fb; --bg2:#ffffff; --panel:#ffffff; --panel2:#f0eefa; --line:#e3e0f2; --text:#1b1836; --muted:#6b6789;
+  --brand:#7c5cff; --brand2:#ff5c9d; --brand-ink:#ffffff; --ok:#12a26a; --warn:#d98a00; --bad:#e0445a;
+  --shadow:0 10px 30px -12px rgba(60,40,140,.25); --glow:radial-gradient(60% 50% at 20% 0%,rgba(124,92,255,.18),transparent 70%),radial-gradient(50% 40% at 100% 10%,rgba(255,92,157,.14),transparent 70%);
+  --radius:16px;
+}
+:root[data-resolved="dark"]{
+  --bg:#0d0b1c; --bg2:#141127; --panel:#171432; --panel2:#1f1b40; --line:#2c2757; --text:#f1efff; --muted:#9a95c4;
+  --brand:#9a80ff; --brand2:#ff6fae; --brand-ink:#100c2a; --ok:#3ddc97; --warn:#ffb84d; --bad:#ff6b81;
+  --shadow:0 14px 40px -14px rgba(0,0,0,.7); --glow:radial-gradient(60% 50% at 15% 0%,rgba(124,92,255,.28),transparent 70%),radial-gradient(50% 40% at 100% 10%,rgba(255,92,157,.2),transparent 70%);
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+:root[data-resolved="light"]{color-scheme:light}
+:root[data-resolved="dark"]{color-scheme:dark}
+body{margin:0;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:120px}
+body::before{content:"";position:fixed;inset:0;background:var(--glow);pointer-events:none;z-index:0}
+main,header,nav,footer{position:relative;z-index:1}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{margin:0;line-height:1.2}
+a{color:var(--brand)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+.hidden{display:none!important}
+
+/* header */
+header.top{display:flex;align-items:center;gap:12px;padding:14px 0;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:-.02em}
+.logo i{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:grid;place-items:center;color:#fff;font-style:normal;box-shadow:0 6px 18px -6px var(--brand)}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:13px;font-weight:600}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;padding:5px 11px;border-radius:999px;cursor:pointer;font-size:13px;color:var(--muted);font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink)}
+.icon-btn{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:600}
+.icon-btn:hover{border-color:var(--brand)}
+
+/* nav */
+nav.tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{white-space:nowrap;border:1px solid var(--line);background:var(--panel);padding:9px 16px;border-radius:999px;cursor:pointer;font-weight:600;color:var(--muted)}
+nav.tabs button[aria-selected="true"]{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-color:transparent;box-shadow:0 8px 20px -8px var(--brand)}
+nav.tabs .count{background:rgba(255,255,255,.25);border-radius:999px;padding:0 7px;margin-left:5px;font-size:12px}
+
+/* cards & forms */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+.layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:start}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+label.f{display:block;font-size:13px;font-weight:700;margin:14px 0 6px}
+label.f small{font-weight:500;color:var(--muted)}
+input[type=text],input[type=password],input[type=number],input[type=url],select,textarea{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;outline:none}
+:root[data-resolved="dark"] input,:root[data-resolved="dark"] select,:root[data-resolved="dark"] textarea{background:var(--bg)}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 25%,transparent)}
+textarea{resize:vertical;min-height:90px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hint{color:var(--muted);font-size:12.5px;margin:4px 0 0}
+.counter{float:right;color:var(--muted);font-weight:500}
+.btn{border:0;border-radius:12px;padding:11px 18px;font-weight:700;cursor:pointer;background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.btn:hover{border-color:var(--brand)}
+.btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-color:transparent;box-shadow:0 10px 24px -10px var(--brand)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.small{padding:6px 11px;font-size:13px;border-radius:10px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn.big{width:100%;padding:14px;font-size:16px;margin-top:18px}
+.switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:14px}
+.switch input{appearance:none;width:40px;height:23px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;transition:.2s;margin:0}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked{background:var(--brand)}
+.switch input:checked::after{left:20px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--bg2);color:var(--text);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer}
+.chip:hover{border-color:var(--brand);color:var(--brand)}
+.mode{display:grid;grid-template-columns:1fr 1fr;background:var(--panel2);border-radius:14px;padding:4px;gap:4px}
+.mode button{border:0;background:none;padding:10px;border-radius:11px;cursor:pointer;font-weight:700;color:var(--muted)}
+.mode button[aria-pressed="true"]{background:var(--panel);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.12)}
+details.adv{margin-top:16px;border:1px dashed var(--line);border-radius:14px;padding:10px 14px}
+details.adv summary{cursor:pointer;font-weight:700}
+.slider{margin-top:12px}
+.slider .top{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+.slider .top output{color:var(--brand);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--brand)}
+
+/* model picker */
+.models{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:560px){.models{grid-template-columns:1fr}}
+.model{border:2px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;background:var(--bg2);text-align:left}
+.model b{display:block}
+.model span{color:var(--muted);font-size:12.5px}
+.model[aria-pressed="true"]{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 12%,var(--bg2))}
+.badge{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:999px;background:linear-gradient(135deg,#7c5cff,#ff5c9d);color:#fff;margin-left:6px;vertical-align:middle;font-weight:800}
+
+/* dropzone */
+.drop{border:2px dashed var(--line);border-radius:14px;padding:16px;text-align:center;color:var(--muted);cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--brand);color:var(--brand)}
+.drop .name{color:var(--text);font-weight:700}
+
+/* studio tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.tile{border:2px solid var(--line);background:var(--panel);border-radius:14px;padding:12px;cursor:pointer;text-align:left}
+.tile .em{font-size:22px}
+.tile b{display:block;margin-top:4px}
+.tile span{font-size:12px;color:var(--muted)}
+.tile[aria-pressed="true"]{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 12%,var(--panel))}
+
+/* track list */
+.tracks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.track{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.art{position:relative;aspect-ratio:1;background:linear-gradient(135deg,var(--brand),var(--brand2));cursor:pointer;overflow:hidden}
+.art img{width:100%;height:100%;object-fit:cover;display:block}
+.art .fallback{position:absolute;inset:0;display:grid;place-items:center;font-size:54px;color:rgba(255,255,255,.85)}
+.art .play{position:absolute;right:10px;bottom:10px;width:46px;height:46px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:0;font-size:18px;cursor:pointer;backdrop-filter:blur(4px)}
+.art .dur{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:2px 8px;border-radius:999px}
+.track .meta{padding:12px 14px 14px}
+.track h3{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track p{margin:2px 0 0;color:var(--muted);font-size:12.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.track .acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty .big{font-size:52px}
+
+/* activity tray */
+#tray{position:fixed;right:14px;bottom:108px;width:min(340px,calc(100vw - 28px));display:flex;flex-direction:column;gap:8px;z-index:30}
+.job{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow);font-size:13px}
+.job .t{display:flex;justify-content:space-between;gap:8px;font-weight:700}
+.job .bar{height:6px;border-radius:99px;background:var(--panel2);overflow:hidden;margin-top:8px}
+.job .bar i{display:block;height:100%;width:30%;background:linear-gradient(90deg,var(--brand),var(--brand2));border-radius:99px;animation:slide 1.4s infinite ease-in-out}
+.job.done .bar i{animation:none;width:100%;background:var(--ok)}
+.job.fail .bar i{animation:none;width:100%;background:var(--bad)}
+.job .s{color:var(--muted);margin-top:4px}
+@keyframes slide{0%{margin-left:-30%}100%{margin-left:100%}}
+.x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1}
+
+/* results */
+.result{margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--bg2)}
+.result pre{white-space:pre-wrap;font:14px/1.5 ui-monospace,Menlo,monospace;margin:8px 0 0}
+.files{display:grid;gap:8px;margin-top:8px}
+.files a{display:flex;justify-content:space-between;gap:10px;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--text);background:var(--panel)}
+.files a:hover{border-color:var(--brand)}
+
+/* player */
+#player{position:fixed;left:0;right:0;bottom:0;z-index:40;background:color-mix(in srgb,var(--panel) 88%,transparent);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+#player .in{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) auto;gap:14px;align-items:center}
+@media(max-width:760px){#player .in{grid-template-columns:1fr auto}#player .seek{grid-column:1/-1;order:3}}
+#player .now{display:flex;gap:10px;align-items:center;min-width:0}
+#player .now img,#player .now .th{width:48px;height:48px;border-radius:10px;object-fit:cover;flex:none;background:linear-gradient(135deg,var(--brand),var(--brand2))}
+#player .now b,#player .now span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#player .now span{font-size:12px;color:var(--muted)}
+.ctl{display:flex;gap:6px;align-items:center}
+.ctl button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:14px}
+.ctl button.main{width:46px;height:46px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:0}
+.seek{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.eq{display:inline-flex;gap:2px;align-items:flex-end;height:14px;margin-right:6px}
+.eq i{width:3px;background:var(--brand);height:4px;border-radius:2px}
+.playing .eq i{animation:eq .8s infinite ease-in-out}
+.playing .eq i:nth-child(2){animation-delay:.2s}.playing .eq i:nth-child(3){animation-delay:.4s}
+@keyframes eq{0%,100%{height:3px}50%{height:14px}}
+
+/* dialogs */
+dialog{border:1px solid var(--line);border-radius:20px;background:var(--panel);color:var(--text);padding:0;max-width:min(560px,calc(100vw - 24px));width:100%;box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(8,6,24,.6);backdrop-filter:blur(3px)}
+dialog .hd{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line)}
+dialog .bd{padding:6px 20px 20px;max-height:70vh;overflow:auto}
+dialog .ft{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line)}
+.actgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.actgrid .btn{text-align:left}
+.lyrics-view{white-space:pre-wrap;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px;max-height:220px;overflow:auto;font-size:14px}
+.karaoke{font-size:22px;font-weight:800;line-height:1.5;max-height:50vh;overflow:auto}
+.karaoke span{color:var(--muted);transition:color .1s}
+.karaoke span.on{color:var(--brand)}
+
+/* gate */
+#gate{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:16px;background:var(--bg);overflow:auto}
+#gate::before{content:"";position:absolute;inset:0;background:var(--glow)}
+.gatecard{position:relative;max-width:460px;width:100%;text-align:center}
+.gatecard .vinyl{width:120px;height:120px;margin:0 auto 18px;border-radius:50%;background:conic-gradient(from 0deg,#1a1633,#2f2760,#1a1633,#2f2760,#1a1633);position:relative;animation:spin 6s linear infinite;box-shadow:0 20px 50px -15px var(--brand)}
+.gatecard .vinyl::after{content:"";position:absolute;inset:38px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand2));border:4px solid #1a1633}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gatecard h1{font-size:30px;letter-spacing:-.03em}
+.gatecard p{color:var(--muted)}
+.err{color:var(--bad);font-size:13px;margin-top:8px;min-height:18px}
+.tagline{background:linear-gradient(135deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
+footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ KEY GATE ============ -->
+<div id="gate">
+  <div class="gatecard card">
+    <div class="vinyl" aria-hidden="true"></div>
+    <h1>Sonic <span class="tagline">Studio</span></h1>
+    <p>Songs, lyrics, covers, stems and music videos — powered by your Suno API key.</p>
+    <form id="gateForm" autocomplete="off">
+      <label class="f" for="keyInput" style="text-align:left">Suno API key</label>
+      <input id="keyInput" type="password" placeholder="Paste your API key" required spellcheck="false" autocapitalize="off">
+      <div class="row" style="justify-content:space-between;margin-top:10px">
+        <label class="switch"><input type="checkbox" id="rememberKey" checked> Remember on this device</label>
+        <a href="https://sunoapi.org/api-key" target="_blank" rel="noopener" style="font-size:13px">Get a key ↗</a>
+      </div>
+      <div class="err" id="gateErr" role="alert"></div>
+      <button class="btn primary big" id="gateBtn" type="submit">Unlock the studio</button>
+    </form>
+    <p class="hint" style="margin-top:14px">Your key stays in your browser and is sent only to the Suno API. Each generation spends credits from your account.</p>
+  </div>
+</div>
+
+<div class="wrap">
+  <header class="top">
+    <div class="logo"><i>♪</i> Sonic Studio</div>
+    <div class="spacer"></div>
+    <span class="pill" title="Remaining credits">⚡ <span id="credits">—</span> credits <button class="x" id="refreshCredits" title="Refresh" aria-label="Refresh credits">↻</button></span>
+    <div class="seg" role="group" aria-label="Theme">
+      <button data-theme-set="light" aria-pressed="false">☀ Light</button>
+      <button data-theme-set="dark" aria-pressed="false">☾ Dark</button>
+      <button data-theme-set="system" aria-pressed="true">⌬ System</button>
+    </div>
+    <button class="icon-btn" id="signOut">Change key</button>
+  </header>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="create" aria-selected="true">✨ Create</button>
+    <button role="tab" data-tab="lyrics" aria-selected="false">✍ Lyrics</button>
+    <button role="tab" data-tab="studio" aria-selected="false">🎛 Studio</button>
+    <button role="tab" data-tab="sounds" aria-selected="false">🥁 Sounds</button>
+    <button role="tab" data-tab="library" aria-selected="false">💿 Library<span class="count" id="libCount">0</span></button>
+  </nav>
+
+  <main>
+    <!-- ============ CREATE ============ -->
+    <section id="tab-create" role="tabpanel">
+      <div class="layout">
+        <div class="card">
+          <div class="mode" role="group" aria-label="Creation mode">
+            <button id="modeSimple" aria-pressed="true">Describe it</button>
+            <button id="modeCustom" aria-pressed="false">Custom control</button>
+          </div>
+
+          <label class="f">Model</label>
+          <div class="models" id="models"></div>
+          <div class="row" style="margin-top:8px">
+            <label class="hint" for="legacyModel">Older models:</label>
+            <select id="legacyModel" style="width:auto">
+              <option value="">— none —</option>
+              <option value="V5_5">V5.5 (deprecated)</option>
+              <option value="V5">V5 (deprecated)</option>
+              <option value="V4_5PLUS">V4.5+ (deprecated)</option>
+              <option value="V4_5ALL">V4.5 All (deprecated)</option>
+              <option value="V4_5">V4.5 (deprecated)</option>
+              <option value="V4">V4 (deprecated)</option>
+            </select>
+          </div>
+
+          <div id="simpleFields">
+            <label class="f" for="cPrompt">Describe your song <small class="counter" id="cPromptN">0 / 3000</small></label>
+            <textarea id="cPrompt" maxlength="3000" placeholder="e.g. A dreamy synthwave song about driving through a neon city at 2am"></textarea>
+            <div class="chips" id="ideaChips"></div>
+            <div class="row" style="margin-top:6px"><button class="btn small" id="surprise" type="button">🎲 Surprise me</button></div>
+          </div>
+
+          <div id="customFields" class="hidden">
+            <label class="f" for="cTitle">Title <small class="counter" id="cTitleN">0 / 80</small></label>
+            <input id="cTitle" type="text" maxlength="80" placeholder="Optional">
+            <label class="f" for="cStyle">Style of music <small class="counter" id="cStyleN">0 / 1000</small></label>
+            <div class="row" style="flex-wrap:nowrap">
+              <input id="cStyle" type="text" maxlength="1000" placeholder="e.g. indie folk, warm acoustic guitar, female vocals">
+              <button class="btn small" id="boostStyle" type="button" title="Let AI enrich your style description">🚀 Boost</button>
+            </div>
+            <div class="chips" id="genreChips"></div>
+            <label class="f" for="cLyrics">Lyrics <small class="counter" id="cLyricsN">0 / 5000</small></label>
+            <textarea id="cLyrics" maxlength="5000" rows="8" placeholder="[Verse]&#10;Write your own lyrics, or leave empty for an instrumental / style-only track&#10;&#10;[Chorus]&#10;…"></textarea>
+            <div class="row" style="margin-top:6px">
+              <button class="btn small" id="lyricsAI" type="button">✍ Write lyrics with AI</button>
+              <span class="hint">Use tags like [Verse] [Chorus] [Bridge] to shape the structure.</span>
+            </div>
+            <label class="f" for="cDuration">Target length <small>(seconds, 10–360, V6 family)</small></label>
+            <input id="cDuration" type="number" min="10" max="360" placeholder="Default 20 — try 120 for a full song">
+          </div>
+
+          <div class="row" style="margin-top:16px">
+            <label class="switch"><input type="checkbox" id="cInstrumental"> Instrumental only</label>
+          </div>
+
+          <div id="createAdv"></div>
+
+          <details class="adv" id="refBox">
+            <summary>Reference media <small style="font-weight:500;color:var(--muted)">(Describe-it mode only)</small></summary>
+            <p class="hint">Steer the song with public URLs. Up to 5 images, 1 video, and audio (6s–30min). Combined with style + lyrics, the total may not exceed 10.</p>
+            <label class="f" for="rImages">Image URLs <small>one per line</small></label>
+            <textarea id="rImages" rows="2" style="min-height:50px"></textarea>
+            <label class="f" for="rVideo">Video URL</label>
+            <input id="rVideo" type="url" placeholder="https://…/clip.mp4">
+            <label class="f" for="rAudio">Audio URLs <small>one per line</small></label>
+            <textarea id="rAudio" rows="2" style="min-height:50px"></textarea>
+            <div class="row" style="margin-top:8px"><span class="hint">or upload audio:</span><button class="btn small" id="rAudioUp" type="button">⬆ Upload file</button><input type="file" id="rAudioFile" accept="audio/*" class="hidden"></div>
+          </details>
+
+          <button class="btn primary big" id="createBtn">🎵 Generate music</button>
+          <p class="hint" style="text-align:center">Each request creates two variations. Streaming preview arrives in about 20 seconds.</p>
+        </div>
+
+        <aside class="card">
+          <h2 style="font-size:17px">How it works</h2>
+          <ol style="padding-left:18px;color:var(--muted);margin:10px 0 0">
+            <li><b style="color:var(--text)">Describe it</b> — a sentence is all you need; the AI writes lyrics and picks the arrangement.</li>
+            <li><b style="color:var(--text)">Custom control</b> — set style, lyrics, length, and how wild the AI gets.</li>
+            <li><b style="color:var(--text)">Then keep going</b> — extend, cover, split into stems, make a video, or turn a voice into a reusable Persona from your Library.</li>
+          </ol>
+          <h2 style="font-size:17px;margin-top:20px">Models</h2>
+          <p class="hint"><b>V6</b> is the flagship. <b>V6 Wild</b> takes creative risks. <b>V6 Mini</b> is fast and light. Older models still work but are deprecated by Suno API.</p>
+          <div id="createLatest"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============ LYRICS ============ -->
+    <section id="tab-lyrics" role="tabpanel" class="hidden">
+      <div class="layout">
+        <div class="card">
+          <h2>Lyrics writer</h2>
+          <p class="hint">Describe the theme, mood and structure. You get lyric drafts you can send straight to Create.</p>
+          <label class="f" for="lPrompt">What is the song about? <small class="counter" id="lPromptN">0 / 200</small></label>
+          <textarea id="lPrompt" maxlength="200" placeholder="A bittersweet ballad about the last flight home after a long trip"></textarea>
+          <button class="btn primary big" id="lyricsBtn">✍ Write lyrics</button>
+          <div id="lyricsOut"></div>
+        </div>
+        <aside class="card">
+          <h2 style="font-size:17px">Style booster</h2>
+          <p class="hint">Turn a rough genre idea into a rich style description.</p>
+          <label class="f" for="bContent">Style idea</label>
+          <input id="bContent" type="text" placeholder="Pop, mysterious">
+          <button class="btn primary big" id="boostBtn" style="margin-top:12px">🚀 Boost style</button>
+          <div id="boostOut"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============ STUDIO ============ -->
+    <section id="tab-studio" role="tabpanel" class="hidden">
+      <div class="tiles" id="studioTiles"></div>
+      <div class="layout">
+        <div class="card" id="studioForm"></div>
+        <aside class="card">
+          <h2 style="font-size:17px" id="studioTitle"></h2>
+          <p class="hint" id="studioDesc"></p>
+          <p class="hint">Source audio must be a public URL. You can also upload a file — it is hosted temporarily (3 days) by the Suno API file service.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============ SOUNDS ============ -->
+    <section id="tab-sounds" role="tabpanel" class="hidden">
+      <div class="layout">
+        <div class="card">
+          <h2>Sound & loop generator</h2>
+          <p class="hint">Sound effects, loops and samples — with tempo and key control.</p>
+          <label class="f">Model</label>
+          <select id="sModel"></select>
+          <label class="f" for="sPrompt">Describe the sound <small class="counter" id="sPromptN">0 / 500</small></label>
+          <textarea id="sPrompt" maxlength="500" placeholder="Warm analog bass loop with tape wobble"></textarea>
+          <div class="grid3">
+            <div><label class="f" for="sTempo">Tempo <small>BPM (blank = auto)</small></label><input id="sTempo" type="number" min="1" max="300"></div>
+            <div><label class="f" for="sKey">Key</label><select id="sKey"></select></div>
+            <div><label class="f">&nbsp;</label><label class="switch"><input type="checkbox" id="sLoop"> Loop</label></div>
+          </div>
+          <label class="switch" style="margin-top:12px"><input type="checkbox" id="sLyrics"> Also fetch lyric subtitles</label>
+          <button class="btn primary big" id="soundBtn">🥁 Generate sound</button>
+        </div>
+        <aside class="card"><h2 style="font-size:17px">Tips</h2><p class="hint">Turn on Loop for seamless beds and set a BPM to match your project. Results land in your Library like any other track.</p></aside>
+      </div>
+    </section>
+
+    <!-- ============ LIBRARY ============ -->
+    <section id="tab-library" role="tabpanel" class="hidden">
+      <div class="row" style="margin-bottom:14px">
+        <input id="libSearch" type="text" placeholder="Search your tracks…" style="max-width:320px">
+        <div class="spacer"></div>
+        <button class="btn small" id="recoverBtn">♻ Recover by task ID</button>
+        <button class="btn small" id="clearLib">Clear library</button>
+      </div>
+      <div class="tracks" id="trackGrid"></div>
+      <div class="empty hidden" id="libEmpty"><div class="big">💿</div><h3>Your library is empty</h3><p>Generate something in Create and it will show up here. Tracks are saved in this browser.</p></div>
+      <p class="hint">Suno API keeps generated files for 14 days — download the ones you love.</p>
+    </section>
+  </main>
+  <footer>Built on the <a href="https://docs.sunoapi.org/" target="_blank" rel="noopener">Suno API</a>. Not affiliated with Suno, Inc. · Generated music is yours to use per your API plan terms.</footer>
+</div>
+
+<div id="tray" aria-live="polite"></div>
+
+<!-- ============ PLAYER ============ -->
+<div id="player" class="hidden">
+  <div class="in">
+    <div class="now"><div class="th" id="pImg"></div><div style="min-width:0"><b id="pTitle">—</b><span id="pSub"></span></div></div>
+    <div class="seek"><span id="pCur">0:00</span><input type="range" id="pSeek" min="0" max="100" step="0.1" value="0" style="flex:1" aria-label="Seek"><span id="pDur">0:00</span></div>
+    <div class="ctl"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
+      <button id="pPrev" aria-label="Previous">⏮</button><button id="pPlay" class="main" aria-label="Play/Pause">▶</button><button id="pNext" aria-label="Next">⏭</button>
+      <button id="pInfo" aria-label="Track details" title="Details">⋯</button></div>
+  </div>
+  <audio id="audio" preload="none"></audio>
+</div>
+
+<!-- Generic dialogs -->
+<dialog id="dlg"><div class="hd"><h3 id="dlgT"></h3><button class="x" id="dlgX" aria-label="Close">✕</button></div><div class="bd" id="dlgB"></div><div class="ft" id="dlgF"></div></dialog>
+
+<script>
+"use strict";
+/* ==========================================================
+   Sonic Studio — client for the Suno API (docs.sunoapi.org)
+   ========================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const fmtT = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} }
+};
+
+/* ---------------- Theme ---------------- */
+const mq = window.matchMedia("(prefers-color-scheme: dark)");
+function applyTheme(mode) {
+  document.documentElement.dataset.theme = mode;
+  document.documentElement.dataset.resolved = mode === "system" ? (mq.matches ? "dark" : "light") : mode;
+  $$("[data-theme-set]").forEach(b => b.setAttribute("aria-pressed", b.dataset.themeSet === mode));
+  store.set("ss.theme", mode);
+}
+mq.addEventListener("change", () => { if (store.get("ss.theme", "system") === "system") applyTheme("system"); });
+$$("[data-theme-set]").forEach(b => b.onclick = () => applyTheme(b.dataset.themeSet));
+applyTheme(store.get("ss.theme", "system"));
+
+/* ---------------- API layer ---------------- */
+let API_KEY = "";
+const CALLBACK = (location.protocol.startsWith("http") ? location.origin : "https://example.com") + "/callback";
+let useProxy = location.protocol.startsWith("http") && !/^(localhost|127\.)/.test(location.hostname) ? true : null; // null = auto-detect
+
+async function raw(base, path, opts = {}) {
+  const proxied = base === "api" ? "/suno" : "/suno-upload";
+  const direct = base === "api" ? "https://api.sunoapi.org" : "https://sunoapiorg.redpandaai.co";
+  const headers = { Authorization: "Bearer " + API_KEY, ...(opts.body ? { "Content-Type": "application/json" } : {}) };
+  const init = { method: opts.method || "GET", headers, body: opts.body ? JSON.stringify(opts.body) : undefined };
+  async function go(root) {
+    const r = await fetch(root + path, init);
+    const text = await r.text();
+    let j; try { j = JSON.parse(text); } catch { j = null; }
+    return { r, j, text };
+  }
+  let res;
+  if (useProxy !== false) {
+    try { res = await go(proxied); if (res.j == null && (res.r.status === 404 || res.r.status === 405 || /text\/html/.test(res.r.headers.get("content-type") || ""))) { res = null; useProxy = false; } else useProxy = true; }
+    catch { res = null; useProxy = false; }
+  }
+  if (!res) res = await go(direct);
+  if (!res.j) throw new Error("Unexpected response from Suno API (HTTP " + res.r.status + ").");
+  return res.j;
+}
+const CODE_MSG = { 401: "That API key was rejected (401). Check it and try again.", 402: "Insufficient credits.", 429: "Insufficient credits — top up your Suno API account.", 430: "Too many requests — slow down a moment.", 405: "Rate limit exceeded — try again shortly.", 413: "Prompt or theme is too long.", 455: "Suno API is under maintenance.", 500: "Suno API server error — try again." };
+async function api(path, body, method) {
+  const j = await raw("api", path, { method: method || (body ? "POST" : "GET"), body });
+  const code = j.code ?? (j.success ? 200 : 0);
+  if (code !== 200) { const e = new Error(CODE_MSG[code] ? CODE_MSG[code] + (j.msg ? " (" + j.msg + ")" : "") : (j.msg || "Request failed (" + code + ")")); e.code = code; throw e; }
+  return j.data;
+}
+function toast(msg, kind = "info", ms = 4500) {
+  const el = document.createElement("div");
+  el.className = "job " + (kind === "error" ? "fail" : kind === "ok" ? "done" : "");
+  el.innerHTML = `<div class="t"><span>${esc(msg)}</span><button class="x" aria-label="Dismiss">✕</button></div>`;
+  el.querySelector("button").onclick = () => el.remove();
+  $("#tray").appendChild(el); if (ms) setTimeout(() => el.remove(), ms); return el;
+}
+async function refreshCredits() {
+  try { const c = await api("/api/v1/generate/credit"); $("#credits").textContent = Number(c).toLocaleString(); return c; }
+  catch (e) { $("#credits").textContent = "—"; throw e; }
+}
+
+/* ---------------- Models ---------------- */
+const MODELS = [
+  { id: "V6", name: "V6", tag: "Recommended", desc: "Natural vocals, richer detail" },
+  { id: "V6_WILD", name: "V6 Wild", desc: "Bolder, more experimental" },
+  { id: "V6_MINI", name: "V6 Mini", desc: "Fast and lightweight" }
+];
+let model = "V6";
+function renderModels() {
+  const legacy = $("#legacyModel").value;
+  $("#models").innerHTML = MODELS.map(m => `<button type="button" class="model" data-m="${m.id}" aria-pressed="${!legacy && model === m.id}"><b>${m.name}${m.tag ? `<span class="badge">${m.tag}</span>` : ""}</b><span>${m.desc}</span></button>`).join("");
+  $$("#models .model").forEach(b => b.onclick = () => { model = b.dataset.m; $("#legacyModel").value = ""; renderModels(); });
+}
+$("#legacyModel").onchange = renderModels;
+const curModel = () => $("#legacyModel").value || model;
+const isV6 = m => /^V6/.test(m) || m === "V5_5";
+
+/* ---------------- Advanced controls (shared) ---------------- */
+function advancedHTML(id, { persona = true, sliders = true, negative = true, gender = true } = {}) {
+  const sl = (k, label, min, max, step, tip) => `<div class="slider"><div class="top"><span>${label}</span><output id="${id}_${k}_o">auto</output></div><input type="range" id="${id}_${k}" min="${min}" max="${max}" step="${step}" value="${(min + max) / 2}" data-touched="0" aria-label="${label}"><p class="hint">${tip}</p></div>`;
+  return `<details class="adv"><summary>Advanced controls</summary>
+    ${gender ? `<label class="f" for="${id}_vg">Vocal gender <small>(a nudge, not a guarantee)</small></label><select id="${id}_vg"><option value="">Any</option><option value="f">Female</option><option value="m">Male</option></select>` : ""}
+    ${negative ? `<label class="f" for="${id}_neg">Exclude styles <small>negative tags</small></label><input type="text" id="${id}_neg" maxlength="1000" placeholder="Heavy metal, upbeat drums">` : ""}
+    ${sliders ? sl("sw", "Style weight", 0, 1, .01, "How tightly to follow your style description.") + sl("wc", "Weirdness", 0, 1, .01, "Higher = more experimental and unexpected.") + sl("aw", "Audio weight", 0, 1, .01, "How strongly audio features are weighted (vocal tracks only).")
+      + `<div class="slider"><div class="top"><span>Variety</span><output id="${id}_va_o">1 · normal</output></div><input type="range" id="${id}_va" min="0" max="4" step="1" value="1" data-touched="0" aria-label="Variety"><p class="hint">0 exact style · 1 balanced · 2 high · 3 extra · 4 max variation.</p></div>` : ""}
+    ${persona ? `<label class="f" for="${id}_pid">Persona / Voice ID <small>optional</small></label><div class="row" style="flex-wrap:nowrap"><input type="text" id="${id}_pid" placeholder="From Library → track → Create Persona"><select id="${id}_pm" style="width:auto"><option value="style_persona">Style persona</option><option value="voice_persona">Voice persona</option></select></div>` : ""}
+  </details>`;
+}
+const VARIETY = ["0 · exact", "1 · normal", "2 · high", "3 · extra", "4 · max"];
+function bindAdvanced(id) {
+  ["sw", "wc", "aw", "va"].forEach(k => {
+    const el = $("#" + id + "_" + k); if (!el) return;
+    el.oninput = () => { el.dataset.touched = "1"; $("#" + id + "_" + k + "_o").textContent = k === "va" ? VARIETY[el.value] : (+el.value).toFixed(2); };
+  });
+}
+function readAdvanced(id, into, { gender = true } = {}) {
+  const g = s => $("#" + id + "_" + s);
+  if (gender && g("vg")?.value) into.vocalGender = g("vg").value;
+  if (g("neg")?.value.trim()) into.negativeTags = g("neg").value.trim();
+  const num = (k, name, isInt) => { const e = g(k); if (e && e.dataset.touched === "1") into[name] = isInt ? parseInt(e.value, 10) : Math.round(e.value * 100) / 100; };
+  num("sw", "styleWeight"); num("wc", "weirdnessConstraint"); num("aw", "audioWeight"); num("va", "variety", true);
+  if (g("pid")?.value.trim()) { into.personaId = g("pid").value.trim(); into.personaModel = g("pm").value; }
+  return into;
+}
+
+/* ---------------- Tracks & library ---------------- */
+let tracks = store.get("ss.tracks", []);
+function saveTracks() { store.set("ss.tracks", tracks.slice(0, 300)); $("#libCount").textContent = tracks.length; }
+function upsertTracks(list, taskId, extra = {}) {
+  let added = 0;
+  for (const s of list || []) {
+    if (!s.id) continue;
+    const t = {
+      id: s.id, taskId, title: s.title || "Untitled", tags: s.tags || "", prompt: s.prompt || "", model: s.model_name || "",
+      audio: s.audio_url || s.source_audio_url || "", stream: s.stream_audio_url || s.source_stream_audio_url || "",
+      image: s.image_url || s.source_image_url || "", duration: s.duration || 0, created: s.createTime || new Date().toISOString(), ...extra
+    };
+    const i = tracks.findIndex(x => x.id === t.id);
+    if (i >= 0) { tracks[i] = { ...tracks[i], ...Object.fromEntries(Object.entries(t).filter(([, v]) => v)), }; } else { tracks.unshift(t); added++; }
+  }
+  saveTracks(); renderLibrary(); return added;
+}
+function trackCard(t) {
+  const playable = t.audio || t.stream;
+  return `<article class="track" data-id="${esc(t.id)}">
+    <div class="art" data-play="${esc(t.id)}">${t.image ? `<img loading="lazy" src="${esc(t.image)}" alt="" onerror="this.remove()">` : ""}<div class="fallback">♪</div>
+      ${t.duration ? `<span class="dur">${fmtT(t.duration)}</span>` : ""}${playable ? `<button class="play" aria-label="Play ${esc(t.title)}">▶</button>` : ""}</div>
+    <div class="meta"><h3 title="${esc(t.title)}">${esc(t.title)}</h3><p>${esc(t.tags || t.model || "")}</p>
+      <div class="acts"><button class="btn small" data-open="${esc(t.id)}">Actions</button>${t.audio ? `<a class="btn small" href="${esc(t.audio)}" download target="_blank" rel="noopener" style="text-decoration:none">⬇ MP3</a>` : ""}</div></div></article>`;
+}
+function renderLibrary() {
+  const q = $("#libSearch").value.trim().toLowerCase();
+  const list = tracks.filter(t => !q || (t.title + " " + t.tags + " " + t.prompt).toLowerCase().includes(q));
+  $("#trackGrid").innerHTML = list.map(trackCard).join("");
+  $("#libEmpty").classList.toggle("hidden", tracks.length > 0);
+  $("#libCount").textContent = tracks.length;
+}
+$("#libSearch").oninput = renderLibrary;
+$("#trackGrid").onclick = e => {
+  const p = e.target.closest("[data-play]"); if (p) return playTrack(p.dataset.play);
+  const o = e.target.closest("[data-open]"); if (o) return openTrack(o.dataset.open);
+};
+$("#clearLib").onclick = () => { if (confirm("Remove all tracks from this browser's library? (Files stay on Suno's servers for 14 days.)")) { tracks = []; saveTracks(); renderLibrary(); } };
+
+/* ---------------- Player ---------------- */
+const audio = $("#audio"); let queue = [], qi = -1, curId = null;
+function playTrack(id) {
+  const t = tracks.find(x => x.id === id); if (!t) return;
+  const src = t.audio || t.stream; if (!src) return toast("Audio isn't ready yet for this track.", "error");
+  queue = tracks.filter(x => x.audio || x.stream).map(x => x.id); qi = queue.indexOf(id); curId = id;
+  audio.src = src; audio.play().catch(() => {});
+  $("#player").classList.remove("hidden");
+  $("#pTitle").textContent = t.title; $("#pSub").textContent = t.tags || t.model;
+  $("#pImg").innerHTML = t.image ? `<img src="${esc(t.image)}" alt="" style="width:48px;height:48px;border-radius:10px;object-fit:cover">` : "";
+  document.title = "▶ " + t.title + " — Sonic Studio";
+}
+function stepQ(d) { if (!queue.length) return; qi = (qi + d + queue.length) % queue.length; playTrack(queue[qi]); }
+$("#pPlay").onclick = () => audio.paused ? audio.play() : audio.pause();
+$("#pPrev").onclick = () => stepQ(-1); $("#pNext").onclick = () => stepQ(1);
+$("#pInfo").onclick = () => curId && openTrack(curId);
+audio.onplay = () => { $("#player").classList.add("playing"); $("#pPlay").textContent = "⏸"; };
+audio.onpause = () => { $("#player").classList.remove("playing"); $("#pPlay").textContent = "▶"; };
+audio.onended = () => stepQ(1);
+audio.ontimeupdate = () => { $("#pCur").textContent = fmtT(audio.currentTime); if (audio.duration && isFinite(audio.duration)) { $("#pDur").textContent = fmtT(audio.duration); if (!seeking) $("#pSeek").value = audio.currentTime / audio.duration * 100; } karaokeTick(); };
+let seeking = false; $("#pSeek").oninput = () => { seeking = true; }; $("#pSeek").onchange = () => { if (audio.duration) audio.currentTime = $("#pSeek").value / 100 * audio.duration; seeking = false; };
+document.addEventListener("keydown", e => { if (e.code === "Space" && !/INPUT|TEXTAREA|SELECT|BUTTON/.test(document.activeElement.tagName) && !$("#dlg").open && audio.src) { e.preventDefault(); $("#pPlay").click(); } });
+
+/* ---------------- Dialog helpers ---------------- */
+const dlg = $("#dlg");
+$("#dlgX").onclick = () => dlg.close();
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+function showDialog(title, body, buttons = []) {
+  $("#dlgT").textContent = title; $("#dlgB").innerHTML = body; const f = $("#dlgF"); f.innerHTML = "";
+  buttons.forEach(b => { const el = document.createElement("button"); el.className = "btn" + (b.primary ? " primary" : ""); el.textContent = b.label; el.onclick = () => b.on(el); f.appendChild(el); });
+  if (!dlg.open) dlg.showModal();
+}
+function askForm(title, fields, submitLabel = "Start") {
+  return new Promise(res => {
+    const html = fields.map(f => {
+      const id = "af_" + f.k;
+      const lab = `<label class="f" for="${id}">${esc(f.label)}${f.hint ? ` <small>${esc(f.hint)}</small>` : ""}</label>`;
+      if (f.type === "select") return lab + `<select id="${id}">${f.opts.map(o => `<option value="${esc(o.v ?? o)}"${(o.v ?? o) === f.def ? " selected" : ""}>${esc(o.l ?? o)}</option>`).join("")}</select>`;
+      if (f.type === "textarea") return lab + `<textarea id="${id}" rows="${f.rows || 4}" placeholder="${esc(f.ph || "")}">${esc(f.def || "")}</textarea>`;
+      if (f.type === "check") return `<label class="switch" style="margin-top:14px"><input type="checkbox" id="${id}"${f.def ? " checked" : ""}> ${esc(f.label)}</label>`;
+      return lab + `<input id="${id}" type="${f.type || "text"}" value="${esc(f.def ?? "")}" placeholder="${esc(f.ph || "")}"${f.min != null ? ` min="${f.min}"` : ""}${f.max != null ? ` max="${f.max}"` : ""}${f.step ? ` step="${f.step}"` : ""}${f.maxlen ? ` maxlength="${f.maxlen}"` : ""}>`;
+    }).join("");
+    dlg.onclose = () => res(null);
+    showDialog(title, html, [
+      { label: "Cancel", on: () => dlg.close() },
+      { label: submitLabel, primary: true, on: () => {
+        const out = {};
+        for (const f of fields) { const el = $("#af_" + f.k); const v = f.type === "check" ? el.checked : el.value.trim(); if (f.req && !v && v !== 0) { el.focus(); toast(f.label + " is required.", "error"); return; } out[f.k] = v; }
+        dlg.onclose = null; dlg.close(); res(out);
+      } }
+    ]);
+  });
+}
+
+/* ---------------- Job engine (create + poll) ---------------- */
+const KINDS = {
+  music:  { path: "/api/v1/generate/record-info", q: "taskId", label: "Music" },
+  lyrics: { path: "/api/v1/lyrics/record-info", q: "taskId", label: "Lyrics" },
+  wav:    { path: "/api/v1/wav/record-info", q: "taskId", label: "WAV" },
+  stems:  { path: "/api/v1/vocal-removal/record-info", q: "taskId", label: "Stems" },
+  midi:   { path: "/api/v1/midi/record-info", q: "taskId", label: "MIDI" },
+  video:  { path: "/api/v1/mp4/record-info", q: "taskId", label: "Video" },
+  cover:  { path: "/api/v1/suno/cover/record-info", q: "taskId", label: "Cover art" },
+  recover:{ path: "/api/v1/suno/recovery/record-info", q: "task_id", label: "Recovery" }
+};
+function judge(kind, d) {
+  const s = d.status ?? d.successFlag;
+  const str = String(s);
+  if (kind === "midi" || kind === "cover") { if (s === 1 || str === "1") return "done"; if (s === 0 || str === "0") return "wait"; return "fail"; }
+  if (str === "SUCCESS" || str === "1" && kind !== "music") return "done";
+  if (kind === "music" && str === "FIRST_SUCCESS") return "partial";
+  if (kind === "music" && str === "TEXT_SUCCESS") return "wait";
+  if (/FAIL|ERROR|EXCEPTION/.test(str) || str === "2") return "fail";
+  return "wait";
+}
+const jobs = new Map();
+function jobEl(job) {
+  let el = $(`#job_${job.taskId}`);
+  if (!el) { el = document.createElement("div"); el.id = "job_" + job.taskId; el.className = "job"; $("#tray").prepend(el); }
+  const st = job.state === "done" ? "done" : job.state === "fail" ? "fail" : "";
+  el.className = "job " + st;
+  el.innerHTML = `<div class="t"><span>${esc(job.label)}</span><button class="x" aria-label="Dismiss">✕</button></div><div class="bar"><i></i></div><div class="s">${esc(job.status)}</div>`;
+  el.querySelector("button").onclick = () => { job.cancel = true; el.remove(); persistJobs(); };
+}
+function persistJobs() { store.set("ss.jobs", [...jobs.values()].filter(j => j.state === "run").map(({ kind, taskId, label, started, meta }) => ({ kind, taskId, label, started, meta }))); }
+async function track(kind, taskId, label, meta = {}, onUpdate) {
+  const job = { kind, taskId, label, status: "Queued…", state: "run", started: Date.now(), meta };
+  jobs.set(taskId, job); jobEl(job); persistJobs();
+  const cfg = KINDS[kind]; let delay = 4000, fails = 0;
+  while (!job.cancel) {
+    if (Date.now() - job.started > 25 * 60 * 1000) { job.state = "fail"; job.status = "Timed out waiting for result."; break; }
+    try {
+      const d = await api(`${cfg.path}?${cfg.q}=${encodeURIComponent(taskId)}`);
+      fails = 0;
+      const v = judge(kind, d);
+      const s = d.status ?? d.successFlag;
+      job.status = v === "partial" ? "Stream ready — finishing up…" : v === "wait" ? (String(s) === "TEXT_SUCCESS" ? "Lyrics done, composing audio…" : "Working…") : job.status;
+      if (kind === "music" && (v === "partial" || v === "done")) {
+        const list = d.response?.sunoData || d.response?.data || [];
+        upsertTracks(list, taskId, meta.track || {});
+      }
+      if (v === "done") { job.state = "done"; job.status = "Complete ✓"; jobEl(job); jobs.delete(taskId); persistJobs(); refreshCredits().catch(() => {}); onUpdate && onUpdate(d, "done"); setTimeout(() => $(`#job_${taskId}`)?.remove(), 6000); return d; }
+      if (v === "fail") { job.state = "fail"; job.status = d.errorMessage || (String(s) === "SENSITIVE_WORD_ERROR" ? "Blocked by content filter — rephrase your prompt." : "Failed: " + s); onUpdate && onUpdate(d, "fail"); break; }
+      if (v === "partial") onUpdate && onUpdate(d, "partial");
+      jobEl(job);
+    } catch (e) {
+      if (++fails >= 5) { job.state = "fail"; job.status = e.message; break; }
+    }
+    await sleep(delay); delay = Math.min(delay + 1000, 8000);
+  }
+  jobEl(job); jobs.delete(taskId); persistJobs();
+  if (job.state === "fail") throw new Error(job.status);
+  return null;
+}
+async function submit(kind, path, body, label, meta, onUpdate) {
+  const data = await api(path, { ...body, ...(body.callBackUrl === null ? {} : { callBackUrl: body.callBackUrl || CALLBACK }) });
+  const taskId = data.taskId || data.task_id; if (!taskId) throw new Error("No task ID returned.");
+  toast(label + " started — this usually takes 30–90 seconds.", "ok", 3500);
+  return track(kind, taskId, label, meta, onUpdate);
+}
+async function runSafe(btn, fn) {
+  const t = btn?.textContent; if (btn) { btn.disabled = true; btn.textContent = "Working…"; }
+  try { return await fn(); } catch (e) { toast(e.message || String(e), "error", 8000); } finally { if (btn) { btn.disabled = false; btn.textContent = t; } }
+}
+// resume jobs after reload
+function resumeJobs() { (store.get("ss.jobs", []) || []).filter(j => Date.now() - j.started < 25 * 60 * 1000).forEach(j => track(j.kind, j.taskId, j.label, j.meta || {}).catch(() => {})); }
+
+/* ---------------- File upload ---------------- */
+async function uploadFile(file, folder = "audio/uploads") {
+  if (file.size > 50 * 1024 * 1024) throw new Error("File too large for browser upload (max ~50 MB).");
+  const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(file); });
+  const n = toast("Uploading " + file.name + "…", "info", 0);
+  try {
+    const j = await raw("upload", "/api/file-base64-upload", { method: "POST", body: { base64Data: b64, uploadPath: folder, fileName: Date.now() + "-" + file.name.replace(/[^\w.\-]/g, "_") } });
+    if (!(j.success || j.code === 200) || !j.data?.downloadUrl) throw new Error(j.msg || "Upload failed.");
+    return j.data.downloadUrl;
+  } finally { n.remove(); }
+}
+function dropZone(id, label, accept = "audio/*") {
+  return `<div class="drop" id="${id}_drop" tabindex="0"><div class="name" id="${id}_name">${label}</div><small>Drop a file here or click to browse</small><input type="file" id="${id}_file" accept="${accept}" class="hidden"></div>
+  <label class="f" for="${id}_url">…or paste a public URL</label><input type="url" id="${id}_url" placeholder="https://…/song.mp3">`;
+}
+function bindDrop(id) {
+  const d = $("#" + id + "_drop"), f = $("#" + id + "_file"), n = $("#" + id + "_name"), u = $("#" + id + "_url");
+  const take = async file => { if (!file) return; try { n.textContent = "Uploading…"; u.value = await uploadFile(file); n.textContent = "✓ " + file.name; } catch (e) { n.textContent = "Upload failed"; toast(e.message, "error", 7000); } };
+  d.onclick = () => f.click(); d.onkeydown = e => { if (e.key === "Enter") f.click(); };
+  f.onchange = () => take(f.files[0]);
+  d.ondragover = e => { e.preventDefault(); d.classList.add("over"); }; d.ondragleave = () => d.classList.remove("over");
+  d.ondrop = e => { e.preventDefault(); d.classList.remove("over"); take(e.dataTransfer.files[0]); };
+}
+
+/* ---------------- Tabs ---------------- */
+function showTab(name) {
+  $$("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === name));
+  $$("main > section").forEach(s => s.classList.toggle("hidden", s.id !== "tab-" + name));
+  store.set("ss.tab", name);
+  if (name === "library") renderLibrary();
+}
+$$("#tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+/* ---------------- CREATE tab ---------------- */
+const IDEAS = ["A sunny reggae tune about Monday mornings", "Epic cinematic orchestral anthem for a space voyage", "Lo-fi study beats with rain and soft piano", "Country ballad about a pilot coming home", "Upbeat 80s synth-pop about summer nights", "Jazz trio playing in a smoky midnight club", "Acoustic folk song thanking a mentor", "Hard-driving rock anthem about chasing dreams"];
+const GENRES = ["Pop", "Rock", "Hip-hop", "Lo-fi", "Jazz", "Synthwave", "Country", "EDM", "Orchestral", "Reggae", "R&B", "Acoustic folk", "Metal", "Ambient", "Gospel"];
+let custom = false;
+function setMode(c) {
+  custom = c; $("#modeSimple").setAttribute("aria-pressed", !c); $("#modeCustom").setAttribute("aria-pressed", c);
+  $("#simpleFields").classList.toggle("hidden", c); $("#customFields").classList.toggle("hidden", !c); $("#refBox").classList.toggle("hidden", c);
+}
+$("#modeSimple").onclick = () => setMode(false); $("#modeCustom").onclick = () => setMode(true);
+$("#createAdv").innerHTML = advancedHTML("c"); bindAdvanced("c");
+$("#ideaChips").innerHTML = IDEAS.slice(0, 4).map(i => `<button type="button" class="chip">${esc(i)}</button>`).join("");
+$("#ideaChips").onclick = e => { if (e.target.classList.contains("chip")) { $("#cPrompt").value = e.target.textContent; count("cPrompt"); } };
+$("#surprise").onclick = () => { $("#cPrompt").value = IDEAS[Math.floor(Math.random() * IDEAS.length)]; count("cPrompt"); };
+$("#genreChips").innerHTML = GENRES.map(g => `<button type="button" class="chip">${esc(g)}</button>`).join("");
+$("#genreChips").onclick = e => { if (!e.target.classList.contains("chip")) return; const el = $("#cStyle"); const parts = el.value.split(",").map(s => s.trim()).filter(Boolean); if (!parts.includes(e.target.textContent)) parts.push(e.target.textContent); el.value = parts.join(", "); count("cStyle"); };
+function count(id) { const el = $("#" + id), n = $("#" + id + "N"); if (n) n.textContent = el.value.length + " / " + el.maxLength; }
+["cPrompt", "cTitle", "cStyle", "cLyrics", "lPrompt", "sPrompt"].forEach(id => { $("#" + id).addEventListener("input", () => count(id)); count(id); });
+const lines = t => t.split(/\n+/).map(s => s.trim()).filter(Boolean);
+
+$("#boostStyle").onclick = e => runSafe(e.target, async () => {
+  const c = $("#cStyle").value.trim(); if (!c) return toast("Type a rough style first, e.g. “Pop, mysterious”.", "error");
+  const d = await api("/api/v1/style/generate", { content: c });
+  if (d.result) { $("#cStyle").value = d.result.slice(0, 1000); count("cStyle"); toast("Style boosted ✨", "ok"); refreshCredits().catch(() => {}); } else toast("No result returned.", "error");
+});
+$("#lyricsAI").onclick = async () => {
+  const f = await askForm("Write lyrics with AI", [{ k: "p", label: "Song theme", type: "textarea", req: true, ph: "A road-trip anthem about leaving a small town", rows: 3 }], "Write");
+  if (!f) return;
+  const n = toast("Writing lyrics…", "info", 0);
+  try { const d = await submit("lyrics", "/api/v1/lyrics", { prompt: f.p.slice(0, 200) }, "Lyrics"); const item = d.response?.data?.find(x => x.text); if (item) { $("#cLyrics").value = item.text.slice(0, 5000); if (!$("#cTitle").value) $("#cTitle").value = (item.title || "").slice(0, 80); count("cLyrics"); count("cTitle"); } } catch (e) { toast(e.message, "error", 7000); } finally { n.remove(); }
+};
+
+$("#createBtn").onclick = e => runSafe(e.target, async () => {
+  const m = curModel(); const body = { customMode: custom, instrumental: $("#cInstrumental").checked, model: m };
+  if (custom) {
+    const title = $("#cTitle").value.trim(), style = $("#cStyle").value.trim(), lyr = $("#cLyrics").value.trim(), dur = parseInt($("#cDuration").value, 10);
+    if (title) body.title = title; if (style) body.style = style; if (lyr && !body.instrumental) body.lyrics = lyr;
+    if (dur) { if (!isV6(m)) toast("Length control only applies to V6-family models — ignoring.", "info"); else body.duration = Math.min(360, Math.max(10, dur)); }
+    readAdvanced("c", body, { gender: !body.instrumental });
+    if (body.instrumental) delete body.audioWeight;
+    if (!body.style && !body.lyrics && !body.negativeTags) throw new Error("Custom mode needs at least one of: style, lyrics, or exclude-styles.");
+    if (!isV6(m)) { delete body.variety; }
+  } else {
+    const p = $("#cPrompt").value.trim(); if (p) body.prompt = p;
+    const imgs = lines($("#rImages").value), vid = $("#rVideo").value.trim(), aud = lines($("#rAudio").value);
+    if (imgs.length) body.imageUrls = imgs.slice(0, 5); if (vid) body.videoUrls = [vid]; if (aud.length) body.audioUrls = aud;
+    const adv = {}; readAdvanced("c", adv);
+    if (adv.personaId) { body.personaId = adv.personaId; body.personaModel = adv.personaModel; }
+    if (!body.prompt && !imgs.length && !vid && !aud.length) throw new Error("Describe your song first (or add reference media).");
+  }
+  await submit("music", "/api/v1/generate", body, body.title || "New song", { track: {} }, (d, s) => { if (s === "partial") toast("First preview is ready in your Library!", "ok", 4000); });
+  showTab("library"); const first = tracks[0]; if (first) playTrack(first.id);
+});
+
+/* ---------------- LYRICS tab ---------------- */
+$("#lyricsBtn").onclick = e => runSafe(e.target, async () => {
+  const p = $("#lPrompt").value.trim(); if (!p) throw new Error("Tell me what the song is about.");
+  const d = await submit("lyrics", "/api/v1/lyrics", { prompt: p }, "Lyrics");
+  const items = (d.response?.data || []).filter(x => x.text);
+  if (!items.length) throw new Error("No lyrics returned.");
+  $("#lyricsOut").innerHTML = items.map((x, i) => `<div class="result"><b>${esc(x.title || "Untitled")}</b><pre>${esc(x.text)}</pre><div class="row" style="margin-top:10px"><button class="btn small" data-use="${i}">🎵 Use in Create</button><button class="btn small" data-copy="${i}">Copy</button></div></div>`).join("");
+  $("#lyricsOut").onclick = ev => {
+    const u = ev.target.closest("[data-use]"), c = ev.target.closest("[data-copy]");
+    if (u) { const it = items[u.dataset.use]; setMode(true); $("#cLyrics").value = it.text.slice(0, 5000); $("#cTitle").value = (it.title || "").slice(0, 80); count("cLyrics"); count("cTitle"); showTab("create"); toast("Lyrics loaded into Custom mode.", "ok"); }
+    if (c) navigator.clipboard?.writeText(items[c.dataset.copy].text).then(() => toast("Copied.", "ok", 1500));
+  };
+});
+$("#boostBtn").onclick = e => runSafe(e.target, async () => {
+  const c = $("#bContent").value.trim(); if (!c) throw new Error("Enter a style idea.");
+  const d = await api("/api/v1/style/generate", { content: c });
+  $("#boostOut").innerHTML = `<div class="result"><pre>${esc(d.result || "")}</pre><div class="row" style="margin-top:10px"><button class="btn small" id="useBoost">Use as style</button></div></div>`;
+  $("#useBoost").onclick = () => { setMode(true); $("#cStyle").value = (d.result || "").slice(0, 1000); count("cStyle"); showTab("create"); };
+  refreshCredits().catch(() => {});
+});
+
+/* ---------------- STUDIO tab ---------------- */
+const STUDIO = {
+  cover:   { em: "🎤", name: "Cover", desc: "Transform an uploaded song into a new style while keeping its core melody.", path: "/api/v1/generate/upload-cover", src: "uploadUrl", fields: ["title", "style", "lyrics", "instr", "adv", "duration"] },
+  extend:  { em: "⏩", name: "Extend", desc: "Upload audio and continue it in the same style.", path: "/api/v1/generate/upload-extend", src: "uploadUrl", fields: ["title", "style", "lyrics", "instr", "continueAt", "adv"] },
+  vocals:  { em: "🎙", name: "Add vocals", desc: "Layer AI vocals over an instrumental you upload.", path: "/api/v1/generate/add-vocals", src: "uploadUrl", fields: ["title!", "style!", "lyrics", "neg!", "adv"] },
+  instr:   { em: "🎸", name: "Add instrumental", desc: "Build a backing track around an uploaded vocal or melody.", path: "/api/v1/generate/add-instrumental", src: "uploadUrl", fields: ["title!", "tags!", "lyrics", "neg!", "adv"] },
+  mashup:  { em: "🔀", name: "Mashup", desc: "Blend two songs into something new.", path: "/api/v1/generate/mashup", src: "mashup", fields: ["title", "style", "lyrics", "instrumental", "adv", "duration"] }
+};
+let studioMode = "cover";
+function renderStudioTiles() {
+  $("#studioTiles").innerHTML = Object.entries(STUDIO).map(([k, s]) => `<button class="tile" data-s="${k}" aria-pressed="${k === studioMode}"><div class="em">${s.em}</div><b>${s.name}</b></button>`).join("");
+  $$("#studioTiles .tile").forEach(b => b.onclick = () => { studioMode = b.dataset.s; renderStudioTiles(); renderStudioForm(); });
+}
+function renderStudioForm() {
+  const s = STUDIO[studioMode]; $("#studioTitle").textContent = s.em + " " + s.name; $("#studioDesc").textContent = s.desc;
+  const has = f => s.fields.some(x => x.replace("!", "") === f);
+  const req = f => s.fields.includes(f + "!");
+  let h = `<label class="f">Model</label><select id="sf_model">${[["V6", "V6 (recommended)"], ["V6_WILD", "V6 Wild"], ["V6_MINI", "V6 Mini"], ["V5_5", "V5.5 (deprecated)"], ["V5", "V5 (deprecated)"], ["V4_5PLUS", "V4.5+ (deprecated)"], ["V4_5ALL", "V4.5 All (deprecated)"], ["V4_5", "V4.5 (deprecated)"], ["V4", "V4 (deprecated)"]].map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select>`;
+  h += s.src === "mashup" ? `<label class="f">Song A</label>${dropZone("sfA", "Upload song A")}<label class="f">Song B</label>${dropZone("sfB", "Upload song B")}` : `<label class="f">Source audio</label>${dropZone("sfA", "Upload your audio")}`;
+  if (has("title")) h += `<label class="f" for="sf_title">Title ${req("title") ? "" : "<small>optional</small>"}</label><input id="sf_title" type="text" maxlength="80">`;
+  if (has("style")) h += `<label class="f" for="sf_style">Style ${req("style") ? "" : "<small>optional</small>"}</label><input id="sf_style" type="text" maxlength="1000" placeholder="Jazz, warm, brushed drums">`;
+  if (has("tags")) h += `<label class="f" for="sf_tags">Instrumental style / tags</label><input id="sf_tags" type="text" maxlength="1000" placeholder="Lush strings, soft piano, slow tempo">`;
+  if (has("lyrics")) h += `<label class="f" for="sf_lyrics">Lyrics <small>optional</small></label><textarea id="sf_lyrics" maxlength="5000" rows="5"></textarea>`;
+  if (has("neg")) h += `<label class="f" for="sf_neg">Exclude styles</label><input id="sf_neg" type="text" placeholder="Heavy metal, screaming">`;
+  if (has("continueAt")) h += `<label class="f" for="sf_cont">Continue from <small>(seconds into the source; blank = end)</small></label><input id="sf_cont" type="number" min="1" step="0.1">`;
+  if (has("duration")) h += `<label class="f" for="sf_dur">Target length <small>(10–360 s, V6 family)</small></label><input id="sf_dur" type="number" min="10" max="360">`;
+  if (has("instr") || has("instrumental")) h += `<label class="switch" style="margin-top:14px"><input type="checkbox" id="sf_instr"> Instrumental only</label>`;
+  if (has("adv")) h += advancedHTML("sf", { negative: !has("neg"), persona: ["cover", "extend", "mashup"].includes(studioMode) });
+  h += `<button class="btn primary big" id="studioGo">${s.em} ${s.name}</button>`;
+  $("#studioForm").innerHTML = h; bindDrop("sfA"); if (s.src === "mashup") bindDrop("sfB"); bindAdvanced("sf");
+  $("#studioGo").onclick = e => runSafe(e.target, runStudio);
+}
+async function runStudio() {
+  const s = STUDIO[studioMode]; const v = id => $("#" + id)?.value.trim(); const body = { model: v("sf_model") };
+  if (s.src === "mashup") { const a = v("sfA_url"), b = v("sfB_url"); if (!a || !b) throw new Error("Provide both songs."); body.uploadUrlList = [a, b]; }
+  else { const a = v("sfA_url"); if (!a) throw new Error("Provide source audio (upload or URL)."); body.uploadUrl = a; }
+  const set = (k, val) => { if (val) body[k] = val; };
+  const need = (k, val, label) => { if (!val) throw new Error(label + " is required."); body[k] = val; };
+  const has = f => s.fields.some(x => x.replace("!", "") === f);
+  const req = f => s.fields.includes(f + "!");
+  if (has("title")) req("title") ? need("title", v("sf_title"), "Title") : set("title", v("sf_title"));
+  if (has("style")) req("style") ? need("style", v("sf_style"), "Style") : set("style", v("sf_style"));
+  if (has("tags")) need("tags", v("sf_tags"), "Instrumental style");
+  if (has("lyrics")) set("lyrics", v("sf_lyrics"));
+  if (has("neg")) body.negativeTags = v("sf_neg") || "none";
+  if (has("continueAt") && v("sf_cont")) body.continueAt = parseFloat(v("sf_cont"));
+  if (has("duration") && v("sf_dur")) { if (isV6(body.model)) body.duration = parseInt(v("sf_dur"), 10); }
+  if (has("instr") || has("instrumental")) body.instrumental = $("#sf_instr").checked;
+  if (has("adv")) readAdvanced("sf", body);
+  if (studioMode === "instr") { delete body.instrumental; }
+  await submit("music", s.path, body, s.name, { track: {} });
+  showTab("library"); if (tracks[0]) playTrack(tracks[0].id);
+}
+renderStudioTiles(); renderStudioForm();
+
+/* ---------------- SOUNDS tab ---------------- */
+$("#sModel").innerHTML = [["V6", "V6"], ["V6_WILD", "V6 Wild"], ["V6_MINI", "V6 Mini"]].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+$("#sKey").innerHTML = ["Any", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B", "Cm", "C#m", "Dm", "D#m", "Em", "Fm", "F#m", "Gm", "G#m", "Am", "A#m", "Bm"].map(k => `<option>${k}</option>`).join("");
+$("#soundBtn").onclick = e => runSafe(e.target, async () => {
+  const p = $("#sPrompt").value.trim(); if (!p) throw new Error("Describe the sound first.");
+  const body = { prompt: p, model: $("#sModel").value, soundLoop: $("#sLoop").checked, soundKey: $("#sKey").value, grabLyrics: $("#sLyrics").checked };
+  const t = parseInt($("#sTempo").value, 10); if (t) body.soundTempo = Math.min(300, Math.max(1, t));
+  await submit("music", "/api/v1/generate/sounds", body, "Sound", { track: { title: p.slice(0, 40) } });
+  showTab("library"); if (tracks[0]) playTrack(tracks[0].id);
+});
+
+/* ---------------- Library: recover by task id ---------------- */
+$("#recoverBtn").onclick = async () => {
+  const f = await askForm("Recover a track by task ID", [{ k: "id", label: "Music task ID", req: true, ph: "5c79…be8e" }], "Fetch");
+  if (!f) return;
+  runSafe(null, async () => { const d = await api("/api/v1/generate/record-info?taskId=" + encodeURIComponent(f.id)); const list = d.response?.sunoData || []; if (!list.length) throw new Error("No tracks found for that task (status: " + d.status + ")."); const n = upsertTracks(list, f.id); toast(`Loaded ${list.length} track(s), ${n} new.`, "ok"); });
+};
+
+/* ---------------- Track detail / actions ---------------- */
+function openTrack(id) {
+  const t = tracks.find(x => x.id === id); if (!t) return;
+  const body = `${t.image ? `<img src="${esc(t.image)}" alt="" style="width:100%;border-radius:14px;margin-top:8px;max-height:280px;object-fit:cover">` : ""}
+    <p class="hint">${esc(t.tags)} ${t.model ? "· " + esc(t.model) : ""} ${t.duration ? "· " + fmtT(t.duration) : ""}</p>
+    ${t.prompt ? `<div class="lyrics-view">${esc(t.prompt)}</div>` : ""}
+    <div class="actgrid">
+      <button class="btn" data-a="play">▶ Play</button>
+      <button class="btn" data-a="karaoke">🎤 Karaoke lyrics</button>
+      <button class="btn" data-a="extend">⏩ Extend</button>
+      <button class="btn" data-a="replace">✂ Replace section</button>
+      <button class="btn" data-a="persona">🧬 Create Persona</button>
+      <button class="btn" data-a="wav">💽 Convert to WAV</button>
+      <button class="btn" data-a="stems">🎚 Split stems</button>
+      <button class="btn" data-a="video">🎬 Music video</button>
+      <button class="btn" data-a="art">🖼 New cover art</button>
+      <button class="btn" data-a="copy">🔗 Copy audio link</button>
+      <button class="btn" data-a="remove">🗑 Remove</button>
+    </div><div id="actOut"></div>`;
+  showDialog(t.title, body, [{ label: "Close", on: () => dlg.close() }]);
+  $("#dlgB").onclick = e => { const b = e.target.closest("[data-a]"); if (b) trackAction(b.dataset.a, t, b); };
+}
+function filesHTML(items) { return `<div class="files">${items.filter(i => i.url).map(i => `<a href="${esc(i.url)}" target="_blank" rel="noopener"><span>${esc(i.label)}</span><span>Open ↗</span></a>`).join("")}</div>`; }
+async function trackAction(a, t, btn) {
+  const out = $("#actOut");
+  if (a === "play") { dlg.close(); return playTrack(t.id); }
+  if (a === "copy") return navigator.clipboard?.writeText(t.audio || t.stream).then(() => toast("Link copied.", "ok", 1500));
+  if (a === "remove") { tracks = tracks.filter(x => x.id !== t.id); saveTracks(); renderLibrary(); dlg.close(); return; }
+  if (a === "karaoke") return runSafe(btn, async () => {
+    const d = await api("/api/v1/generate/get-timestamped-lyrics", { taskId: t.taskId, audioId: t.id });
+    if (!d?.alignedWords?.length) throw new Error("No timestamped lyrics available for this track.");
+    startKaraoke(t, d.alignedWords);
+  });
+  const dur = t.duration || 0;
+  if (a === "extend") {
+    const f = await askForm("Extend “" + t.title + "”", [
+      { k: "at", label: "Continue from (seconds)", type: "number", def: Math.max(1, Math.floor(dur - 10)) || 30, min: 1, step: 0.1, req: true },
+      { k: "style", label: "Style", hint: "optional", def: t.tags?.slice(0, 200) }, { k: "lyrics", label: "Lyrics for the extension", type: "textarea", hint: "optional" },
+      { k: "model", label: "Model", type: "select", opts: ["V6", "V6_WILD", "V6_MINI", "V5_5", "V5", "V4_5PLUS", "V4_5ALL", "V4_5", "V4"], def: "V6" }], "Extend"); if (!f) return;
+    const body = { audioId: t.id, taskId: t.taskId, continueAt: parseFloat(f.at), model: f.model};
+    if (f.style) body.style = f.style; if (f.lyrics) body.lyrics = f.lyrics; body.title = t.title + " (ext)";
+    return runSafe(null, async () => { await submit("music", "/api/v1/generate/extend", body, "Extend", { track: {} }); showTab("library"); });
+  }
+  if (a === "replace") {
+    const f = await askForm("Replace a section", [
+      { k: "s", label: "Start (s)", type: "number", req: true, step: 0.01, min: 0 }, { k: "e", label: "End (s)", type: "number", req: true, step: 0.01, min: 0, hint: "at least 10 s after start" },
+      { k: "tags", label: "Style for replacement", req: true, def: t.tags?.slice(0, 200) }, { k: "lyr", label: "Lyrics for the replaced segment", type: "textarea", req: true },
+      { k: "full", label: "Complete lyrics of the whole song after the change", type: "textarea", req: true, def: t.prompt }], "Replace"); if (!f) return;
+    return runSafe(null, async () => { await submit("music", "/api/v1/generate/replace-section", { taskId: t.taskId, audioId: t.id, prompt: f.lyr, tags: f.tags, title: t.title, infillStartS: parseFloat(f.s), infillEndS: parseFloat(f.e), fullLyrics: f.full }, "Replace section", { track: {} }); showTab("library"); });
+  }
+  if (a === "persona") {
+    const f = await askForm("Create a Persona", [
+      { k: "name", label: "Persona name", req: true, def: t.title.slice(0, 40) }, { k: "desc", label: "Describe the style, mood, vocals", type: "textarea", req: true, def: t.tags },
+      { k: "vs", label: "Analyze from (s)", type: "number", def: 0, min: 0, step: 0.1 }, { k: "ve", label: "Analyze to (s)", type: "number", def: 30, min: 1, step: 0.1 }], "Create"); if (!f) return;
+    return runSafe(btn, async () => { const d = await api("/api/v1/generate/generate-persona", { taskId: t.taskId, audioId: t.id, name: f.name, description: f.desc, vocalStart: parseFloat(f.vs), vocalEnd: parseFloat(f.ve) });
+      const personas = store.get("ss.personas", []); personas.unshift({ id: d.personaId, name: d.name }); store.set("ss.personas", personas);
+      out.innerHTML = `<div class="result"><b>Persona created ✓</b><p class="hint">ID: <code>${esc(d.personaId)}</code> — paste it into Advanced controls when creating.</p><button class="btn small" id="cpP">Copy ID</button></div>`; $("#cpP").onclick = () => navigator.clipboard?.writeText(d.personaId); });
+  }
+  if (a === "wav") return runSafe(btn, async () => { const d = await submit("wav", "/api/v1/wav/generate", { taskId: t.taskId, audioId: t.id }, "WAV convert"); out.innerHTML = `<div class="result"><b>WAV ready</b>${filesHTML([{ label: t.title + ".wav", url: d.response?.audioWavUrl }])}</div>`; });
+  if (a === "stems") {
+    const f = await askForm("Split stems", [{ k: "type", label: "Type", type: "select", def: "separate_vocal", opts: [{ v: "separate_vocal", l: "Vocals + instrumental" }, { v: "split_stem", l: "Full band (drums, bass, guitar, keys…)" }, { v: "split_stem_advanced", l: "One specific instrument" }] },
+      { k: "stem", label: "Instrument", hint: "advanced only", type: "select", opts: ["Lead Vocal", "Backing Vocals", "Drum Kit", "Bass", "Guitar", "Piano", "Synth", "String Section", "Brass Section", "Woodwinds", "Percussion", "Organ", "Choir", "Saxophone", "Violin", "Cello", "Flute", "Trumpet"], def: "Lead Vocal" }], "Split"); if (!f) return;
+    const body = { taskId: t.taskId, audioId: t.id, type: f.type }; if (f.type === "split_stem_advanced") body.stemName = f.stem;
+    return runSafe(null, async () => { const d = await submit("stems", "/api/v1/vocal-removal/generate", body, "Stem split");
+      const r = d.response || {}; const names = { vocalUrl: "Vocals", instrumentalUrl: "Instrumental", backingVocalsUrl: "Backing vocals", drumsUrl: "Drums", bassUrl: "Bass", guitarUrl: "Guitar", keyboardUrl: "Keyboard", percussionUrl: "Percussion", stringsUrl: "Strings", synthUrl: "Synth", fxUrl: "FX", brassUrl: "Brass", woodwindsUrl: "Woodwinds" };
+      const items = Object.entries(names).map(([k, l]) => ({ label: l, url: r[k] })); (r.originData || []).forEach(o => items.push({ label: o.stem_type_group_name || "Stem", url: o.audio_url }));
+      const mid = store.get("ss.stemTask", {}); mid[t.id] = d.taskId; store.set("ss.stemTask", mid);
+      openTrack(t.id); $("#actOut").innerHTML = `<div class="result"><b>Stems ready</b>${filesHTML(items)}<div class="row" style="margin-top:10px"><button class="btn small" id="toMidi">🎹 Convert stems to MIDI</button></div></div>`;
+      $("#toMidi").onclick = e2 => runSafe(e2.target, async () => { const md = await submit("midi", "/api/v1/midi/generate", { taskId: d.taskId }, "MIDI"); const ins = md.midiData?.instruments || []; $("#actOut").insertAdjacentHTML("beforeend", `<div class="result"><b>MIDI detected</b><p class="hint">${ins.map(i => esc(i.name) + " (" + (i.notes?.length || 0) + " notes)").join(" · ") || "No instruments detected."}</p><button class="btn small" id="dlMidi">Download .json note data</button></div>`); $("#dlMidi").onclick = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(md.midiData, null, 1)], { type: "application/json" })); a.download = t.title + "-midi.json"; a.click(); }; }); });
+  }
+  if (a === "video") {
+    const f = await askForm("Create music video", [{ k: "author", label: "Artist name shown in video", hint: "optional", maxlen: 50 }, { k: "domain", label: "Watermark / brand", hint: "optional", maxlen: 50 }], "Create"); if (!f) return;
+    const body = { taskId: t.taskId, audioId: t.id }; if (f.author) body.author = f.author; if (f.domain) body.domainName = f.domain;
+    return runSafe(null, async () => { const d = await submit("video", "/api/v1/mp4/generate", body, "Music video"); const u = d.response?.videoUrl; openTrack(t.id); $("#actOut").innerHTML = `<div class="result"><b>Video ready</b>${u ? `<video src="${esc(u)}" controls playsinline style="width:100%;border-radius:12px;margin-top:8px"></video>` : ""}${filesHTML([{ label: "Download MP4", url: u }])}</div>`; });
+  }
+  if (a === "art") return runSafe(btn, async () => { const d = await submit("cover", "/api/v1/suno/cover/generate", { taskId: t.taskId }, "Cover art"); const imgs = d.response?.images || []; out.innerHTML = `<div class="result"><b>New cover art</b><div class="grid2" style="margin-top:8px">${imgs.map(u => `<div><img src="${esc(u)}" alt="" style="width:100%;border-radius:12px"><button class="btn small" style="margin-top:6px" data-setart="${esc(u)}">Use as cover</button></div>`).join("")}</div></div>`; out.onclick = ev => { const b = ev.target.closest("[data-setart]"); if (b) { t.image = b.dataset.setart; saveTracks(); renderLibrary(); toast("Cover updated.", "ok", 2000); } }; });
+}
+
+/* ---------------- Karaoke ---------------- */
+let kWords = [];
+function startKaraoke(t, words) {
+  kWords = words.filter(w => w.word != null);
+  showDialog("🎤 " + t.title, `<div class="karaoke" id="kBox">${kWords.map((w, i) => `<span data-i="${i}">${esc(w.word.replace(/\n/g, " ").replace(/\[[^\]]*\]/g, m => m))} </span>`).join("")}</div><p class="hint">Words highlight in time with playback.</p>`, [{ label: "Close", on: () => dlg.close() }]);
+  playTrack(t.id);
+}
+function karaokeTick() {
+  const box = $("#kBox"); if (!box || !dlg.open) return; const now = audio.currentTime; let act = -1;
+  for (let i = 0; i < kWords.length; i++) { if (kWords[i].startS <= now) act = i; else break; }
+  const spans = box.children; for (let i = 0; i < spans.length; i++) spans[i].classList.toggle("on", i <= act && kWords[i].endS + 0.4 >= now || i === act);
+  if (spans[act]) { const s = spans[act]; if (s.offsetTop < box.scrollTop || s.offsetTop > box.scrollTop + box.clientHeight - 40) box.scrollTop = s.offsetTop - 40; }
+}
+
+/* ---------------- Auth gate ---------------- */
+async function unlock(key, remember, silent) {
+  API_KEY = key.trim(); $("#gateErr").textContent = ""; const btn = $("#gateBtn"); btn.disabled = true; btn.textContent = "Checking key…";
+  try {
+    await refreshCredits();
+    (remember ? localStorage : sessionStorage).setItem("ss.key", API_KEY); if (!remember) store.del("ss.key");
+    $("#gate").classList.add("hidden"); $("#keyInput").value = "";
+    showTab(store.get("ss.tab", "create")); resumeJobs(); return true;
+  } catch (e) {
+    API_KEY = ""; if (!silent) $("#gateErr").textContent = e.code === 401 || /401|rejected/i.test(e.message) ? "That key wasn't accepted. Double-check it at sunoapi.org/api-key." : e.message;
+    return false;
+  } finally { btn.disabled = false; btn.textContent = "Unlock the studio"; }
+}
+$("#gateForm").onsubmit = e => { e.preventDefault(); unlock($("#keyInput").value, $("#rememberKey").checked); };
+$("#signOut").onclick = () => { try { localStorage.removeItem("ss.key"); sessionStorage.removeItem("ss.key"); } catch {} API_KEY = ""; audio.pause(); $("#player").classList.add("hidden"); $("#gate").classList.remove("hidden"); $("#keyInput").focus(); };
+$("#refreshCredits").onclick = () => refreshCredits().then(() => toast("Credits updated.", "ok", 1500)).catch(e => toast(e.message, "error"));
+
+/* ---------------- Boot ---------------- */
+renderModels(); setMode(false); saveTracks(); renderLibrary();
+(async () => {
+  let saved = ""; try { saved = localStorage.getItem("ss.key") || sessionStorage.getItem("ss.key") || ""; } catch {}
+  if (saved) { const ok = await unlock(saved, !!localStorage.getItem("ss.key"), true); if (!ok) $("#keyInput").focus(); } else $("#keyInput").focus();
+})();
+</script>
+</body>
+</html>
